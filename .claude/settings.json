@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pdftotext *)",
+
+      "Bash(nvidia-smi *)",
+      "Bash(nvidia-smi)",
+      "Bash(pip show *)",
+      "Bash(pip list *)",
+      "Bash(pip list)",
+      "Bash(conda list *)",
+      "Bash(conda list)",
+      "Bash(conda info *)",
+      "Bash(conda env list)",
+      "Bash(accelerate env)",
+      "Bash(huggingface-cli scan-cache)",
+      "Bash(huggingface-cli env)",
+
+      "Bash(brew list *)",
+      "Bash(brew info *)",
+
+      "mcp__claude_ai_Notion__notion-search",
+      "mcp__claude_ai_Notion__notion-fetch",
+      "mcp__claude_ai_Notion__notion-get-comments",
+      "mcp__claude_ai_Notion__notion-get-users",
+      "mcp__claude_ai_Notion__notion-get-teams"
+    ]
+  }
+}
