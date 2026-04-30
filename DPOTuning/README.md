@@ -16,15 +16,52 @@ Goal: quantify the QLoRA-vs-full-FT cost-quality tradeoff explicitly.
 
 Checkpoint: `sft-zephyr-lora/checkpoint-17205` (1 epoch, 207K examples, A100 80GB)
 
-The base model (Mistral-7B-v0.1 with no instruction tuning) shows characteristic raw-completion failures
-when prompted with the Zephyr chat template:
+Mistral-7B-v0.1 is a raw text completion model — it has never seen a chat template.
+When prompted in the Zephyr `<|user|>` / `<|assistant|>` format, it treats the template tokens
+as part of a document to continue, not as conversation boundaries to respect.
+SFT on 207K UltraChat conversations teaches the model what those tokens mean.
 
-- **Haiku prompt** → infinite loop of `"I'm sorry, I don't understand."`
-- **Math prompt** → gives the answer but then repeats the question indefinitely (no EOS)
-- **RL explanation** → runs off into more and more questions without stopping
+### Instruction following — before and after
 
-Post-SFT, all three prompts produce clean, well-formed responses that stop at the right place.
-The improvement is obvious and consistent across prompt types.
+**Q: Write a short haiku about gradient descent.**
+
+| Base model | SFT model |
+|---|---|
+| Enters a clarification loop, then hallucinates new `<|user|>` turns indefinitely, never writes the haiku | Writes a proper three-line haiku and stops |
+
+> **Base:** `I'm sorry, I don't understand the question. Could you please rephrase it?` `<\|user\|>` `I'm sorry, I meant to say "gradient descent."` `<\|assistant\|>` *(explanation of gradient descent)* `<\|user\|>` `That's great, but I'm looking for a short haiku...` `<\|assistant\|>` `I'm sorry, I don't understand...` *(loops)*
+>
+> **SFT:** `Gradient descent, / Step by step, down the slope, / Optimization.`
+
+---
+
+**Q: Explain the difference between supervised and reinforcement learning in 3 sentences.**
+
+| Base model | SFT model |
+|---|---|
+| Gives a partial answer, then generates a completely new user question and answers that too — it's continuing a document, not answering a question | Answers in two clean sentences and stops |
+
+> **Base:** *(correct first answer)* `<\|user\|>` `What is the difference between a neural network and a decision tree?` `<\|assistant\|>` *(new answer)* `<\|user\|>` *(another new question)* ... *(never stops)*
+>
+> **SFT:** `Supervised learning is a type of machine learning where a model is trained on labeled data... Reinforcement learning is a type of machine learning where an agent learns to make decisions by receiving rewards or punishments...`
+
+---
+
+**Q: What is 17 × 23? Show your work step by step.**
+
+| Base model | SFT model |
+|---|---|
+| Outputs `17 × 23 = 391`, then pastes the exact same question and answer ~10 more times without stopping | Walks through the multiplication algorithm step by step |
+
+> **Base:** `17 × 23 = 391` `<\|user\|>` `What is 17 × 23? Show your work step by step.` `<\|assistant\|>` `17 × 23 = 391` `<\|user\|>` *(repeats indefinitely)*
+>
+> **SFT:** `1. Write the numbers in a vertical column... 2. Multiply the first digit... 3. ...` *(full step-by-step)*
+
+---
+
+The pattern across all three failures is the same: the base model has no concept of turn boundaries or
+task completion. It sees `<|assistant|>` as a cue to continue generating text, not to answer and stop.
+One epoch of SFT fixes all three failure modes simultaneously.
 
 Full before/after comparison: [`notebooks/sft_qlora_A100.ipynb`](notebooks/sft_qlora_A100.ipynb)
 Local inference eval (4090, bf16, no quantization): [`notebooks/eval_sft_adapter.ipynb`](notebooks/eval_sft_adapter.ipynb)
