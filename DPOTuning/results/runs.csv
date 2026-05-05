@@ -1,1 +1,1 @@
-run_id,checkpoint,tag,stage,beta,epochs,lr,lora_r,simpo_gamma,avg_gen_length,p90_gen_length,refusal_rate,pref_acc,mt_bench,alpacaeval2_lc,notes
+run_id,checkpoint,tag,stage,beta,epochs,lr,lora_r,simpo_gamma,avg_gen_length,p90_gen_length,harmful_refusal_rate,over_refusal_rate,pref_acc,mt_bench,alpacaeval2_lc,notes
