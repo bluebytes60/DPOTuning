@@ -1,0 +1,63 @@
+# Stage 4b — SimPO sensitivity check (gbr=0.3)
+# One-line diff from simpo_qlora.yaml: simpo_gamma 1.0 → 0.6
+# gamma/beta = 0.6/2.0 = 0.3 (vs paper default 0.5)
+# Purpose: confirm SimPO result isn't a paper-default fluke
+
+# Model
+model_name_or_path: checkpoints/sft-zephyr-lora/checkpoint-17205
+torch_dtype: bfloat16
+attn_implementation: flash_attention_2
+
+# LoRA
+use_peft: true
+load_in_4bit: true
+lora_r: 128
+lora_alpha: 128
+lora_dropout: 0.05
+lora_target_modules:
+- q_proj
+- k_proj
+- v_proj
+- o_proj
+- gate_proj
+- up_proj
+- down_proj
+
+# Data
+dataset_mixer:
+  argilla/ultrafeedback-binarized-preferences-cleaned: 1.0
+dataset_splits:
+- train
+- test
+dataset_num_proc: 12
+
+# CPOTrainer (SimPO) — only change vs simpo_qlora.yaml
+loss_type: simpo
+bf16: true
+beta: 2.0
+simpo_gamma: 0.6     # <-- sensitivity check: gbr=0.3 vs paper default 0.5
+do_eval: true
+eval_strategy: steps
+eval_steps: 100
+gradient_accumulation_steps: 4
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+learning_rate: 5.0e-6
+log_level: info
+logging_steps: 10
+lr_scheduler_type: cosine
+max_length: 1024
+max_prompt_length: 512
+num_train_epochs: 1
+optim: paged_adamw_32bit
+output_dir: checkpoints/simpo-gbr03
+per_device_train_batch_size: 4
+per_device_eval_batch_size: 8
+push_to_hub: false
+report_to: none
+save_strategy: steps
+save_steps: 500
+save_total_limit: 3
+seed: 42
+warmup_ratio: 0.1
