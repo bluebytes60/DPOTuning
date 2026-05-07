@@ -1,1 +1,4 @@
 run_id,checkpoint,tag,stage,beta,epochs,lr,lora_r,simpo_gamma,avg_gen_length,p90_gen_length,harmful_refusal_rate,over_refusal_rate,pref_acc,mt_bench,alpacaeval2_lc,notes
+dpo5_base,mistralai/Mistral-7B-v0.1,base,base,,,,,,,,,,,3.17,,"RTX 4090, Mistral-7B-v0.1 float16"
+dpo5_base,mistralai/Mistral-7B-v0.1,base,base,,,,,,,,,,,3.17,,"RTX 4090, Mistral-7B-v0.1 float16"
+dpo5_sft,D:\git\DPOTuning\checkpoints\sft-zephyr-lora\checkpoint-17205,sft,sft,,1,2e-4,16,,,,,,,5.75,,"RTX 4090, UltraChat 1 epoch QLoRA"

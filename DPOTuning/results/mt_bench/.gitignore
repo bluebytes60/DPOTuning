@@ -1,0 +1,6 @@
+# Track only our own model runs, not any stray FastChat outputs
+model_answer/*
+model_judgment/*
+!model_answer/mistral-base.jsonl
+!model_answer/sft-qlora.jsonl
+!model_judgment/gpt-4_single.jsonl
