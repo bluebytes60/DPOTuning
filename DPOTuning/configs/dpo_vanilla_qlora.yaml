@@ -10,7 +10,10 @@ attn_implementation: flash_attention_2
 
 # LoRA
 use_peft: true
-load_in_4bit: true
+load_in_4bit: false  # A100 80GB has headroom for bf16 (~35GB total); skip 4-bit to avoid
+                     # dequantization overhead (~2-3x speedup). SFT adapter was trained with
+                     # 4-bit base (RTX 4090 constraint) but the mismatch is acceptable —
+                     # DPO fine-tuning adapts quickly from the SFT init.
 lora_r: 128
 lora_alpha: 128
 lora_dropout: 0.05
@@ -27,8 +30,8 @@ lora_target_modules:
 dataset_mixer:
   argilla/ultrafeedback-binarized-preferences-cleaned: 1.0
 dataset_splits:
-- train
-- test
+- train[2%:]   # ~61K training examples
+- train[:2%]   # ~1.3K eval examples (held-out from same split)
 dataset_num_proc: 12
 
 # DPOTrainer
@@ -37,10 +40,11 @@ beta: 0.1           # sweep: {0.01, 0.1, 0.3} — override on CLI with --beta
 do_eval: true
 eval_strategy: steps
 eval_steps: 100
-gradient_accumulation_steps: 4
+gradient_accumulation_steps: 2
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
+precompute_ref_log_probs: true
 learning_rate: 5.0e-6  # sweep: {5e-7, 1e-6, 5e-6} — override on CLI with --learning_rate
 log_level: info
 logging_steps: 10
@@ -50,12 +54,11 @@ max_prompt_length: 512
 num_train_epochs: 3    # sweep: {1, 2, 3} — override on CLI with --num_train_epochs
 optim: paged_adamw_32bit
 output_dir: checkpoints/dpo-vanilla
-per_device_train_batch_size: 4
+per_device_train_batch_size: 8
 per_device_eval_batch_size: 8
 push_to_hub: false
 report_to: none
-save_strategy: steps
-save_steps: 500        # headline run: use 1000 to capture 2-3 trajectory checkpoints
-save_total_limit: 3
+save_strategy: epoch   # saves at end of each epoch -> 3 checkpoints over 3 epochs
+save_total_limit: 3    # keeps all 3 (epoch 1, 2, 3) — perfect for Tier 2 trajectory
 seed: 42
 warmup_ratio: 0.1

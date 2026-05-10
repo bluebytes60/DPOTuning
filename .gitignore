@@ -1,0 +1,11 @@
+# Model checkpoints
+DPOTuning/sft-zephyr-lora/
+
+# Nested repos
+alignment-handbook/
+
+# macOS
+.DS_Store
+
+# VSCode
+.vscode/
