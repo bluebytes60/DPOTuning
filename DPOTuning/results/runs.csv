@@ -1,4 +1,10 @@
-run_id,checkpoint,tag,stage,beta,epochs,lr,lora_r,simpo_gamma,avg_gen_length,p90_gen_length,harmful_refusal_rate,over_refusal_rate,pref_acc,mt_bench,alpacaeval2_lc,notes
-dpo5_base,mistralai/Mistral-7B-v0.1,base,base,,,,,,,,,,,3.17,,"RTX 4090, Mistral-7B-v0.1 float16"
-dpo5_base,mistralai/Mistral-7B-v0.1,base,base,,,,,,,,,,,3.17,,"RTX 4090, Mistral-7B-v0.1 float16"
-dpo5_sft,D:\git\DPOTuning\checkpoints\sft-zephyr-lora\checkpoint-17205,sft,sft,,1,2e-4,16,,,,,,,5.75,,"RTX 4090, UltraChat 1 epoch QLoRA"
+run_id,checkpoint,tag,stage,beta,epochs,lr,lora_r,simpo_gamma,max_new_tokens,avg_gen_length,p90_gen_length,harmful_refusal_rate,over_refusal_rate,pref_acc,mt_bench,alpacaeval2_lc,notes
+dpo5_base,mistralai/Mistral-7B-v0.1,base,base,,,,,,,,,,,,3.17,,"RTX 4090, Mistral-7B-v0.1 float16"
+dpo5_base,mistralai/Mistral-7B-v0.1,base,base,,,,,,,,,,,,3.17,,"RTX 4090, Mistral-7B-v0.1 float16"
+dpo5_sft,D:\git\DPOTuning\checkpoints\sft-zephyr-lora\checkpoint-17205,sft,sft,,1,2e-4,16,,,,,,,,5.75,,"RTX 4090, UltraChat 1 epoch QLoRA"
+dpo6/checkpoint-3732,d:\git\DPOTuning\checkpoints\checkpoint-3732,dpo6_ep1,dpo,0.1,1,5e-06,16,,512,310.8,513.0,0.4,0.0,,,,
+dpo6/checkpoint-7464,d:\git\DPOTuning\checkpoints\checkpoint-7464,dpo6_ep2,dpo,0.1,2,5e-06,16,,512,404.3,513.0,0.4,0.0,,,,
+dpo6/checkpoint-11196,d:\git\DPOTuning\checkpoints\checkpoint-11196,dpo6_ep3,dpo,0.1,3,5e-06,16,,512,434.4,513.0,0.4,0.0,,,,
+dpo6/checkpoint-3732,d:\git\DPOTuning\checkpoints\checkpoint-3732,dpo6_ep1,dpo,0.1,3,5e-06,16,,1024,417.1,1024.1,0.4,0.0,,,,
+dpo6/checkpoint-7464,d:\git\DPOTuning\checkpoints\checkpoint-7464,dpo6_ep2,dpo,0.1,3,5e-06,16,,1024,655.9,1025.0,0.4,0.0222,,,,
+dpo6/checkpoint-11196,d:\git\DPOTuning\checkpoints\checkpoint-11196,dpo6_ep3,dpo,0.1,3,5e-06,16,,1024,613.5,1025.0,0.4,0.0,,,,
