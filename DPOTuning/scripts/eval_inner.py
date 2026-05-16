@@ -20,8 +20,7 @@ import numpy as np
 from pathlib import Path
 
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
-from peft import PeftModel
+from scripts.generation import load_model, generate
 from scripts.refusal_classifier import RefusalClassifier
 
 PROMPTS_PATH = Path(__file__).parent.parent / "prompts" / "fixed_50.json"
@@ -36,33 +35,6 @@ def parse_args():
     parser.add_argument("--all_checkpoints", action="store_true", help="Iterate all checkpoints under --checkpoint")
     parser.add_argument("--max_new_tokens", type=int, default=512)
     return parser.parse_args()
-
-
-def load_model(base_model_id, checkpoint_path):
-    tokenizer = AutoTokenizer.from_pretrained(checkpoint_path)
-
-    model = AutoModelForCausalLM.from_pretrained(
-        base_model_id,
-        torch_dtype=torch.bfloat16,
-        device_map="auto",
-    )
-    model = PeftModel.from_pretrained(model, checkpoint_path)
-    model.eval()
-    return model, tokenizer
-
-
-@torch.inference_mode()
-def generate(model, tokenizer, messages, max_new_tokens):
-    prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-    prompt_len = inputs["input_ids"].shape[1]
-    output_ids = model.generate(
-        **inputs,
-        max_new_tokens=max_new_tokens,
-        do_sample=False,
-        pad_token_id=tokenizer.eos_token_id,
-    )
-    return tokenizer.decode(output_ids[0][prompt_len:], skip_special_tokens=True)
 
 
 def run_diagnostic(model, tokenizer, prompts, max_new_tokens):
