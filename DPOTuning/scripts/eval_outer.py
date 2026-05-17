@@ -45,6 +45,7 @@ RESULTS_CSV = Path(__file__).parent.parent / "results" / "runs.csv"
 CSV_FIELDNAMES = [
     "run_id", "checkpoint", "tag", "stage",
     "beta", "epochs", "lr", "lora_r", "simpo_gamma",
+    "max_new_tokens",
     "avg_gen_length", "p90_gen_length",
     "harmful_refusal_rate", "over_refusal_rate", "pref_acc",
     "mt_bench", "alpacaeval2_lc", "notes",
@@ -66,6 +67,12 @@ def parse_args():
     p.add_argument("--stage", default=None, choices=["base", "sft", "dpo", "simpo"])
     p.add_argument("--run_id", default=None,
                    help="Explicit run ID (auto-generated if omitted)")
+    p.add_argument("--beta", default=None, help="DPO/SimPO beta")
+    p.add_argument("--epochs", default=None)
+    p.add_argument("--lr", default=None)
+    p.add_argument("--lora_r", default=None)
+    p.add_argument("--simpo_gamma", default=None)
+    p.add_argument("--notes", default="")
     return p.parse_args()
 
 
@@ -175,6 +182,7 @@ def run_mt_bench(checkpoint: str, base_model: str | None, model_id: str) -> dict
 
         # Step 2: judge with GPT-4 (~$5–10)
         print(f"\n[2/2] Running GPT-4 judgment: {model_id}  (~$5–10)")
+        # gen_judgment prints cost estimate and waits for Enter — auto-confirm via stdin.
         subprocess.run(
             [
                 sys.executable, "-m", "fastchat.llm_judge.gen_judgment",
@@ -185,6 +193,8 @@ def run_mt_bench(checkpoint: str, base_model: str | None, model_id: str) -> dict
             ],
             check=True,
             cwd=str(judge_dir),
+            input="\n",
+            text=True,
         )
 
         score, n_turns = _parse_mt_bench_score(model_id, judge_dir)
@@ -208,6 +218,15 @@ def _append_csv(row: dict):
     """Append one result row to results/runs.csv."""
     RESULTS_CSV.parent.mkdir(parents=True, exist_ok=True)
     write_header = not RESULTS_CSV.exists() or RESULTS_CSV.stat().st_size == 0
+    # Defensive: if the file is missing a trailing newline, csv.writer would
+    # glue the new row onto the last existing row. Add the newline first.
+    if RESULTS_CSV.exists() and RESULTS_CSV.stat().st_size > 0:
+        with open(RESULTS_CSV, "rb") as f:
+            f.seek(-1, 2)
+            last_byte = f.read(1)
+        if last_byte not in (b"\n", b"\r"):
+            with open(RESULTS_CSV, "ab") as f:
+                f.write(b"\n")
     with open(RESULTS_CSV, "a", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_FIELDNAMES, extrasaction="ignore")
         if write_header:
@@ -226,6 +245,12 @@ def main():
         "checkpoint": args.checkpoint,
         "tag": args.tag or "",
         "stage": args.stage or "",
+        "beta": args.beta or "",
+        "epochs": args.epochs or "",
+        "lr": args.lr or "",
+        "lora_r": args.lora_r or "",
+        "simpo_gamma": args.simpo_gamma or "",
+        "notes": args.notes or "",
     }
 
     if args.mt_bench:
