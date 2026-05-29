@@ -1,0 +1,9 @@
+# Track only the DPO-15 model outputs + judgments, not smoke debris or future sweeps.
+*
+!.gitignore
+!zephyr-sft-qlora_outputs.json
+!zephyr-dpo6-ep1_outputs.json
+!zephyr-dpo6-ep2_outputs.json
+!zephyr-dpo6-ep3_outputs.json
+!results/
+!results/**
