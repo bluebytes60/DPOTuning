@@ -10,7 +10,7 @@ attn_implementation: flash_attention_2
 
 # LoRA
 use_peft: true
-load_in_4bit: true
+load_in_4bit: false  # A100 80GB has headroom for bf16; matches dpo_vanilla_qlora.yaml for apples-to-apples comparison
 lora_r: 128
 lora_alpha: 128
 lora_dropout: 0.05
@@ -27,8 +27,8 @@ lora_target_modules:
 dataset_mixer:
   argilla/ultrafeedback-binarized-preferences-cleaned: 1.0
 dataset_splits:
-- train
-- test
+- train[2%:]   # ~59.7K training examples (argilla cleaned UF has no test split — carve from train)
+- train[:2%]   # ~1.2K eval examples (held-out, same 98/2 split as DPO config)
 dataset_num_proc: 12
 
 # CPOTrainer (SimPO) — only change vs simpo_qlora.yaml
