@@ -11,7 +11,14 @@
 
 ## What collapsed
 
-Inner-loop eval on SimPO ep1 reported:
+Inner-loop eval was run **only on `checkpoint-3732`** — end of epoch 1, the earliest
+saved checkpoint. So everything below documents the model state **after one full
+epoch of SimPO training**, not after 3. The model was already broken at that point.
+(The ep2 and ep3 checkpoints exist on disk but never had inner-loop run on them
+because ep1 was already obviously degenerate — no point spending more eval cycles
+on later checkpoints that would only be worse.)
+
+Inner-loop eval on SimPO ep1 (`checkpoint-3732`, after 1 epoch) reported:
 
 | Metric | Value | Interpretation |
 |---|---|---|
@@ -57,16 +64,34 @@ The policy found a tiny set of vocabulary items that — when emitted repeatedly
 | Knob | SimPO paper / DPO-17 story spec | YAML at run time | Actual run | Deviation |
 |---|---|---|---|---|
 | `learning_rate` | **5e-7** | 5.0e-6 | 5.0e-6 | **10× too high** |
-| `num_train_epochs` | **1** | 1 | **3** (CLI override) | **3× too many** |
+| `num_train_epochs` | **1** | 1 | 3 (CLI override) | 3× too many |
 | β | 2.0 | 2.0 | 2.0 | ok |
 | `simpo_gamma` | 1.0 | 1.0 | 1.0 | ok |
 | `lora_r` | (paper is full-FT) | 128 | 128 | wide adapter |
 
-Combined optimization budget: **~30× the paper's validated recipe**, applied to a reference-free objective on a wide LoRA. The KL anchor that DPO relies on to bound the policy near SFT does not exist in SimPO. Without that anchor, 30× over-optimization let the policy run away into a degenerate basin.
+**The collapse happened within 1 epoch.** ep1's outputs are already pure token soup
+(see the sample responses above) — and ep1 is the checkpoint at the end of the first
+epoch. The additional epoch 2 and 3 checkpoints almost certainly went further into
+the degenerate basin, but they didn't cause the failure — they were downstream of it.
 
-**The failure is not in the training script.** `scripts/train_simpo.py` mirrors `scripts/train_dpo.py` structurally — same data format pipeline, same model loading, same LoRA config, same trainer pattern. DPO-6 trained successfully on the same code paths. The SimPO-specific knobs (`cpo_alpha=0.0`, `loss_type="simpo"`, `simpo_gamma`) are correctly wired through `CPOConfig`. If the script were the bug, DPO would also have collapsed.
+This pins the primary cause to the **learning rate**, not the epoch count:
 
-The bug was in `configs/simpo_qlora.yaml`'s `learning_rate: 5.0e-6` line — it was set to match DPO's lr for "apples-to-apples", but DPO's lr is bounded by the KL anchor; SimPO's isn't. Combined with the user-applied `--num_train_epochs 3` CLI override (which targeted a per-epoch trajectory analogous to DPO-6), the policy was driven 30× past the paper's safe region.
+- **lr=5e-6 alone is enough to mode-collapse SimPO within 1 epoch.** That's a strong
+  claim about how aggressive 10× the paper's lr is when there's no KL anchor.
+- **The 3-epoch CLI override didn't cause the collapse**, just extended it. If we
+  had stopped at 1 epoch, the model would have been just as broken.
+
+The bug was in `configs/simpo_qlora.yaml`'s `learning_rate: 5.0e-6` line — it was set
+to match DPO's lr for "apples-to-apples", but DPO's lr is bounded by the KL anchor;
+SimPO's isn't. **One epoch at 10× the paper's lr on a reference-free objective was
+enough to destroy language modeling.**
+
+**The failure is not in the training script.** `scripts/train_simpo.py` mirrors
+`scripts/train_dpo.py` structurally — same data format pipeline, same model loading,
+same LoRA config, same trainer pattern. DPO-6 trained successfully on the same code
+paths. The SimPO-specific knobs (`cpo_alpha=0.0`, `loss_type="simpo"`, `simpo_gamma`)
+are correctly wired through `CPOConfig`. If the script were the bug, DPO would also
+have collapsed.
 
 ### Why DPO didn't fail at the same hparams
 
@@ -94,7 +119,7 @@ This is consistent with caveats in the SimPO paper and follow-up work that empha
 
 **Honest framing is the writeup angle here, not a hiding-the-failure angle:**
 
-> "Tried to run SimPO at DPO-matched hparams (lr=5e-6, 3 epochs) for direct comparison. Without DPO's KL anchor, the same optimization budget that produced a healthy DPO model drove SimPO into catastrophic mode collapse — token-soup outputs across all 3 epoch checkpoints. Diagnosed via inner-loop length + classifier metrics (avg 1089 tok with 97.8% classifier-labeled 'over-refusal' — incoherent unless outputs are nonsense) and confirmed by direct output inspection. The KL anchor is doing more load-bearing work than I anticipated. Retrained at paper-exact hparams (lr=5e-7, 1 epoch) and re-ran the pipeline."
+> "Tried to run SimPO at DPO-matched hparams (lr=5e-6) for direct comparison. Without DPO's KL anchor, **a single epoch at 10× the paper's recommended lr was enough to mode-collapse the policy into token soup** — diagnosed via inner-loop length + classifier metrics (avg 1089 tok with 97.8% classifier-labeled 'over-refusal' — incoherent unless outputs are nonsense) and confirmed by direct output inspection. The KL anchor in DPO is doing more load-bearing work than I anticipated; SimPO needed the paper's 5e-7 lr to stay in a sane region. Retrained at paper-exact hparams and re-ran the pipeline."
 
 This is a stronger interview answer than a clean "SimPO worked" result, because it shows:
 1. Empirical falsification of a specific mechanistic prediction (I expected refusal-rate drop; got mode collapse instead)
@@ -110,4 +135,11 @@ This is a stronger interview answer than a clean "SimPO worked" result, because 
 3. **Re-run the eval pipeline** on the new checkpoint(s): inner-loop → MT-Bench → AE2 LC. Notebooks (`dpo17_inner_loop_eval.ipynb`, `mt_bench_dpo17.ipynb`, `ae2_dpo17.ipynb`) are reusable — only the `CHECKPOINTS` paths need updating to the new output dir.
 4. **Keep the collapsed checkpoints** in `checkpoints/simpo-3ep-dpo17/` as a reference artifact for the writeup. Do NOT overwrite or delete; the failure record is part of the project's story.
 
-**Open question for the retraining run:** should we ALSO test lr=5e-6 + 1 epoch (to isolate "is it the lr or the epochs that broke it")? That gives the cleanest mechanistic attribution but doubles training cost. Default: skip; the paper-exact run is the priority.
+**Mechanistic attribution is already clean** — no need for additional sensitivity runs:
+
+- `lr=5e-6 + 1 epoch` is already known to collapse (this run's ep1 was already broken).
+- The paper-exact `lr=5e-7 + 1 epoch` is what the next run will test.
+- If that succeeds, the lr was the primary cause and the epoch count was secondary.
+- If it also fails, something deeper is wrong (LoRA r=128 too wide for unanchored
+  loss? cpo_alpha=0.0 not actually doing what we think? need to dig in via TRL
+  source).
