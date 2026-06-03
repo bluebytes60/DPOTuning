@@ -43,7 +43,7 @@ gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
-learning_rate: 5.0e-6
+learning_rate: 5.0e-7   # SimPO paper. NOT 5e-6 (DPO's lr) — see results/dpo17_simpo_collapse.md
 log_level: info
 logging_steps: 10
 lr_scheduler_type: cosine

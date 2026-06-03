@@ -1,7 +1,11 @@
-# Stage 4 — SimPO QLoRA config (paper defaults, gbr=0.5)
+# Stage 4 — SimPO QLoRA config (paper-exact hparams, gbr=0.5)
 # Uses TRL CPOTrainer with loss_type="simpo" (TRL >= 0.9.0 required)
 # Paper defaults: beta=2.0, simpo_gamma=1.0 → gamma/beta = 0.5
 # Reference-free: no reference model → ~5GB less VRAM vs vanilla DPO
+#
+# DO NOT raise learning_rate to match DPO's 5e-6 — see results/dpo17_simpo_collapse.md.
+# First DPO-17 attempt did exactly that and the policy mode-collapsed into token soup.
+# Without DPO's KL anchor, SimPO is hparam-sensitive in a way DPO is not.
 
 # Model — same SFT checkpoint as DPO (controlled comparison)
 model_name_or_path: checkpoints/sft-zephyr-lora/checkpoint-17205
@@ -43,13 +47,15 @@ gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
-learning_rate: 5.0e-6
+learning_rate: 5.0e-7   # SimPO paper. NOT 5e-6 (DPO's lr) — see results/dpo17_simpo_collapse.md
 log_level: info
 logging_steps: 10
 lr_scheduler_type: cosine
 max_length: 1024
 max_prompt_length: 512
-num_train_epochs: 1   # SimPO comparison point: 1 epoch (matches DPO-1-epoch sweep)
+num_train_epochs: 1   # SimPO paper says 1 epoch is sufficient. Do NOT override to 3
+                       # via CLI — first DPO-17 run did that and collapsed; see
+                       # results/dpo17_simpo_collapse.md
 optim: paged_adamw_32bit
 output_dir: checkpoints/simpo-gbr05
 per_device_train_batch_size: 4
