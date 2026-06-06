@@ -22,8 +22,10 @@ Usage (A100, RunPod):
 import argparse
 import torch
 from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
-from peft import LoraConfig
-from trl import CPOTrainer, CPOConfig
+from peft import LoraConfig, PeftModel, PeftConfig
+# TRL 0.29 moved CPO to trl.experimental.cpo (top-level export removed).
+# requirements.txt pins trl==0.29.0, so import from the experimental path.
+from trl.experimental.cpo import CPOTrainer, CPOConfig
 from datasets import load_dataset
 from omegaconf import OmegaConf
 
@@ -72,13 +74,27 @@ def build_model_and_tokenizer(cfg):
         bnb_4bit_use_double_quant=True,
     ) if cfg.load_in_4bit else None
 
-    model = AutoModelForCausalLM.from_pretrained(
-        cfg.model_name_or_path,
+    # Load the BASE model, then apply + MERGE the SFT adapter so the SimPO LoRA
+    # trains on a clean base+SFT model with a single trainable adapter.
+    #
+    # Do NOT pass the SFT checkpoint straight to from_pretrained: transformers 5.x
+    # attaches the adapter via its native PeftAdapterMixin (a model attribute, not a
+    # peft.PeftModel). That slips past CPOTrainer's "merge-and-unload first" guard
+    # (trl.experimental.cpo.cpo_trainer raises only on isinstance(model, PeftModel))
+    # and get_peft_model then STACKS a second adapter — an ambiguous double-adapter
+    # state where the SFT start is no longer guaranteed in the forward pass.
+    # merge_and_unload() bakes SFT into the base weights so the start is unambiguous.
+    base_model_id = PeftConfig.from_pretrained(cfg.model_name_or_path).base_model_name_or_path
+
+    base_model = AutoModelForCausalLM.from_pretrained(
+        base_model_id,
         quantization_config=bnb_config,
         device_map="auto",
         dtype=torch.bfloat16,
         attn_implementation=cfg.attn_implementation,
     )
+    model = PeftModel.from_pretrained(base_model, cfg.model_name_or_path)
+    model = model.merge_and_unload()
     model.config.use_cache = False
     return model, tokenizer
 
@@ -87,25 +103,67 @@ def format_dataset(ds, tokenizer):
     """Convert chosen/rejected from message lists to chat-templated strings.
 
     The argilla dataset stores chosen/rejected as lists of message dicts.
-    CPOTrainer (like DPOTrainer) expects plain strings, so we apply the chat
-    template here.
+    CPOTrainer (like DPOTrainer) expects the *explicit prompt* format: plain
+    strings where chosen/rejected are the COMPLETION only. CPOTrainer's
+    build_tokenized_answer concatenates prompt+chosen itself, so putting the
+    full conversation (prompt included) in chosen/rejected duplicates the
+    prompt — fatal for SimPO, whose reward is normalized by completion length.
       prompt  -> formatted up to the last user turn (add_generation_prompt=True)
-      chosen  -> full conversation including chosen assistant response
-      rejected-> full conversation including rejected assistant response
+      chosen  -> chosen assistant response only (templated full minus prompt prefix)
+      rejected-> rejected assistant response only
     """
     def format_row(example):
         chosen_msgs   = example["chosen"]
         rejected_msgs = example["rejected"]
         prompt_msgs   = chosen_msgs[:-1]
 
-        example["prompt"]    = tokenizer.apply_chat_template(
+        prompt = tokenizer.apply_chat_template(
             prompt_msgs, tokenize=False, add_generation_prompt=True
         )
-        example["chosen"]    = tokenizer.apply_chat_template(chosen_msgs,   tokenize=False)
-        example["rejected"]  = tokenizer.apply_chat_template(rejected_msgs, tokenize=False)
+        chosen_full   = tokenizer.apply_chat_template(chosen_msgs,   tokenize=False)
+        rejected_full = tokenizer.apply_chat_template(rejected_msgs, tokenize=False)
+
+        # add_generation_prompt makes `prompt` an exact prefix of the full
+        # templated conversation; slice it off to get the completion only.
+        assert chosen_full.startswith(prompt) and rejected_full.startswith(prompt), (
+            "templated prompt is not a prefix of the full conversation — chat "
+            "template changed; completion slicing would be wrong"
+        )
+        example["prompt"]   = prompt
+        example["chosen"]   = chosen_full[len(prompt):]
+        example["rejected"] = rejected_full[len(prompt):]
         return example
 
     return ds.map(format_row, num_proc=4)
+
+
+def _completion_survives_truncation(example, tokenizer, max_length, margin=2):
+    """True if neither completion is emptied by TRL's prompt+response truncation.
+
+    SimPO uses average_log_prob (length-normalized reward), so a ZERO-length
+    completion is a 0/0 -> NaN that poisons grads and collapses the run to token
+    soup. DPO is immune because it SUMS log-probs (empty -> 0, finite).
+
+    The trigger lives in CPOTrainer's tokenize_row: it slices each response to
+    `max_length - longer_response_length`. When the longer response exceeds
+    max_length that bound goes negative and empties the *shorter* completion
+    (and an exact == max_length empties both). We mirror that arithmetic here
+    (+1 each for the BOS added to the prompt / EOS added to the answer, plus a
+    small margin for tokenizer edge cases) and drop only the offenders (~0.1% of
+    UltraFeedback) — keeping max_length=1024 for parity with the DPO run.
+    """
+    lp = len(tokenizer(example["prompt"],   add_special_tokens=False)["input_ids"]) + 1  # +BOS
+    lc = len(tokenizer(example["chosen"],   add_special_tokens=False)["input_ids"]) + 1  # +EOS
+    lr = len(tokenizer(example["rejected"], add_special_tokens=False)["input_ids"]) + 1  # +EOS
+    longer = max(lc, lr)
+
+    def kept(length):
+        if lp + longer <= max_length:   # no truncation -> full response retained
+            return length
+        k = max_length - longer
+        return min(length, k) if k >= 0 else max(0, length + k)
+
+    return kept(lc) > margin and kept(lr) > margin
 
 
 def load_data(cfg, tokenizer):
@@ -116,6 +174,18 @@ def load_data(cfg, tokenizer):
     ds_eval  = load_dataset(dataset_id, split=eval_split)
     ds_train = format_dataset(ds_train, tokenizer)
     ds_eval  = format_dataset(ds_eval,  tokenizer)
+
+    # NaN-guard: drop rows whose truncation would empty a completion (SimPO 0/0).
+    fn_kwargs = {"tokenizer": tokenizer, "max_length": cfg.max_length}
+    for name, ds in (("train", ds_train), ("eval", ds_eval)):
+        n0 = len(ds)
+        kept = ds.filter(_completion_survives_truncation, num_proc=4, fn_kwargs=fn_kwargs)
+        print(f"[NaN-guard] {name}: dropped {n0 - len(kept)}/{n0} empty-completion rows "
+              f"-> {len(kept)} kept")
+        if name == "train":
+            ds_train = kept
+        else:
+            ds_eval = kept
     return ds_train, ds_eval
 
 
@@ -163,7 +233,7 @@ def main():
         eval_steps=cfg.eval_steps,
         logging_steps=cfg.logging_steps,
         max_length=cfg.max_length,
-        max_prompt_length=cfg.max_prompt_length,
+        # max_prompt_length removed: trl==0.29.0 CPOConfig dropped it (use max_length).
         optim=cfg.optim,
         save_strategy=cfg.save_strategy,
         save_steps=cfg.save_steps,

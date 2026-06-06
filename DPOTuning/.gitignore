@@ -1,2 +1,4 @@
 CLAUDE.md
 checkpoints/
+__pycache__/
+*.pyc

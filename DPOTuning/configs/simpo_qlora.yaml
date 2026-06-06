@@ -53,7 +53,7 @@ logging_steps: 10
 lr_scheduler_type: cosine
 max_length: 1024
 max_prompt_length: 512
-num_train_epochs: 1   # SimPO paper says 1 epoch is sufficient. (The first DPO-17 run
+num_train_epochs: 3   # SimPO paper says 1 epoch is sufficient. (The first DPO-17 run
                        # used 3 epochs via CLI override, but it had already collapsed
                        # by end of epoch 1 — lr was the primary cause, not epochs.
                        # See results/dpo17_simpo_collapse.md.)
@@ -63,8 +63,8 @@ per_device_train_batch_size: 4
 per_device_eval_batch_size: 8
 push_to_hub: false
 report_to: none
-save_strategy: steps
-save_steps: 500       # headline run: use 1000 for trajectory checkpoints
-save_total_limit: 3
+save_strategy: epoch  # one checkpoint per epoch (~steps 3732/7464/11193); ignores save_steps
+save_steps: 500       # ignored under save_strategy=epoch; kept for reference
+save_total_limit: 3   # 3 epochs → all three epoch checkpoints retained
 seed: 42
 warmup_ratio: 0.1
