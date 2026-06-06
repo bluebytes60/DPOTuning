@@ -50,6 +50,10 @@ gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
 learning_rate: 5.0e-7   # SimPO paper value (not DPO's 5e-6; lr's role in v1 collapse unconfirmed)
+max_grad_norm: 1.0      # (a) preventive: in the v2 run grad_norm climbed 12->30 then NaN'd
+                        # at epoch ~0.97. Clipping each finite-but-large update MAY stop the
+                        # climb before the cliff. It CANNOT repair an already-NaN gradient
+                        # (NaN survives clipping) — that's what the NaN-guard trainer is for.
 log_level: info
 logging_steps: 10
 lr_scheduler_type: cosine

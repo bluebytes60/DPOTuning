@@ -189,6 +189,49 @@ def load_data(cfg, tokenizer):
     return ds_train, ds_eval
 
 
+class NaNGuardCPOTrainer(CPOTrainer):
+    """CPOTrainer that HALTS the moment the loss or any gradient goes non-finite,
+    dumping the offending batch — instead of silently training on NaN for hours.
+
+    The empty-completion filter in load_data removes ONE known NaN trigger. This
+    catches any *other* trigger at the exact step it fires, so we can inspect the
+    rows that caused it rather than guess. It checks both:
+      - non-finite loss, and
+      - non-finite gradients on a finite loss (the v2 run logged loss=7.537 with
+        grad_norm=nan one step before collapse — a loss-only check would miss it).
+    Detection happens AFTER super().training_step (forward+backward), so grads
+    are populated. Cheap under LoRA: only adapter params carry grads.
+    """
+
+    def _dump_batch(self, inputs, reason):
+        print(f"\n{'='*70}\n[NaN-guard] HALT at step {self.state.global_step}: {reason}\n{'='*70}")
+        tok = self.processing_class
+        for key in ("prompt_input_ids", "chosen_input_ids", "rejected_input_ids"):
+            ids = inputs.get(key)
+            if ids is None:
+                continue
+            print(f"\n--- {key} ({tuple(ids.shape)}) ---")
+            for i, row in enumerate(ids):
+                text = tok.decode(row[row != tok.pad_token_id], skip_special_tokens=False)
+                print(f"  [row {i}] {text[:500]!r}")
+
+    def training_step(self, model, inputs, num_items_in_batch=None):
+        loss = super().training_step(model, inputs, num_items_in_batch=num_items_in_batch)
+
+        if not torch.isfinite(loss).all():
+            self._dump_batch(inputs, reason=f"non-finite loss = {loss.item()}")
+            raise FloatingPointError("Non-finite SimPO loss; offending batch dumped above.")
+
+        bad = [n for n, p in model.named_parameters()
+               if p.requires_grad and p.grad is not None and not torch.isfinite(p.grad).all()]
+        if bad:
+            self._dump_batch(inputs, reason=f"finite loss={loss.item():.4f} but non-finite grad "
+                                            f"in {len(bad)} params (first: {bad[0]})")
+            raise FloatingPointError("Non-finite gradient on finite loss; offending batch dumped above.")
+
+        return loss
+
+
 def main():
     args = parse_args()
     cfg = load_config(args.config, args)
@@ -225,6 +268,7 @@ def main():
         gradient_checkpointing=cfg.gradient_checkpointing,
         gradient_checkpointing_kwargs=dict(cfg.gradient_checkpointing_kwargs),
         learning_rate=cfg.learning_rate,
+        max_grad_norm=cfg.get("max_grad_norm", 1.0),
         lr_scheduler_type=cfg.lr_scheduler_type,
         warmup_ratio=cfg.warmup_ratio,
         bf16=cfg.bf16,
@@ -242,7 +286,7 @@ def main():
         seed=cfg.seed,
     )
 
-    trainer = CPOTrainer(
+    trainer = NaNGuardCPOTrainer(
         model=model,
         args=cpo_config,
         train_dataset=ds_train,
