@@ -3,9 +3,11 @@
 # Paper defaults: beta=2.0, simpo_gamma=1.0 → gamma/beta = 0.5
 # Reference-free: no reference model → ~5GB less VRAM vs vanilla DPO
 #
-# DO NOT raise learning_rate to match DPO's 5e-6 — see results/dpo17_simpo_collapse.md.
-# First DPO-17 attempt did exactly that and the policy mode-collapsed into token soup.
-# Without DPO's KL anchor, SimPO is hparam-sensitive in a way DPO is not.
+# learning_rate is 5e-7 = the SimPO paper value. Keep it there.
+# NOTE: an earlier writeup (results/dpo17_simpo_collapse.md) claimed lr=5e-6 was THE cause
+# of the v1 token-soup collapse. That was never validated — the symptom has multiple
+# independent triggers (empty-completion 0/0 NaN; gradient explosion at epoch ~0.97 even
+# at lr=5e-7). Do not treat that doc as settled. No clean SimPO run reproduced yet.
 
 # Model — same SFT checkpoint as DPO (controlled comparison)
 model_name_or_path: checkpoints/sft-zephyr-lora/checkpoint-17205
@@ -47,16 +49,15 @@ gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: false
-learning_rate: 5.0e-7   # SimPO paper. NOT 5e-6 (DPO's lr) — see results/dpo17_simpo_collapse.md
+learning_rate: 5.0e-7   # SimPO paper value (not DPO's 5e-6; lr's role in v1 collapse unconfirmed)
 log_level: info
 logging_steps: 10
 lr_scheduler_type: cosine
 max_length: 1024
 max_prompt_length: 512
-num_train_epochs: 3   # SimPO paper says 1 epoch is sufficient. (The first DPO-17 run
-                       # used 3 epochs via CLI override, but it had already collapsed
-                       # by end of epoch 1 — lr was the primary cause, not epochs.
-                       # See results/dpo17_simpo_collapse.md.)
+num_train_epochs: 3   # SimPO paper says 1 epoch is sufficient. NOTE: the latest run still
+                       # NaN'd at epoch ~0.97 (gradient explosion) regardless of epoch count,
+                       # so the epoch setting is not what's keeping us from a clean run.
 optim: paged_adamw_32bit
 output_dir: checkpoints/simpo-gbr05
 per_device_train_batch_size: 4

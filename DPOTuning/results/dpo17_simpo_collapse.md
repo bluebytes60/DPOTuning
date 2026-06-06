@@ -1,5 +1,27 @@
 # DPO-17 (v1): SimPO Catastrophic Mode Collapse — Failure Analysis
 
+> ## ⚠️ CORRECTION (2026-06-06) — the "lr=5e-6 was the primary cause" conclusion below is NOT established
+>
+> The analysis in this document confidently attributes the collapse to `lr=5e-6` (10× the
+> paper's lr). **That conclusion was never validated and is contradicted by later runs.**
+> The symptom (NaN / token-soup) turns out to have **at least three independent triggers**,
+> only one of which is touched by lowering the lr:
+>
+> 1. **lr=5e-6** — plausibly contributory, but never isolated (the v1 run also used 3 epochs
+>    via CLI override and the original data-formatting bug, so lr was never tested alone).
+> 2. **Empty-completion `0/0` NaN** — length-normalized SimPO divides by completion length;
+>    TRL truncation could empty a completion → `0/0` → NaN. Fixed by the completion-only
+>    reformat + `_completion_survives_truncation` guard in `scripts/train_simpo.py`.
+> 3. **Gradient explosion** — even at the paper-exact `lr=5e-7` with the guard active, the
+>    run logged in `logs/simpo-default-dpo17_20260605_170920.log` still went NaN at
+>    **epoch ~0.97**: grad_norm climbed `12 → 30` then blew to NaN. No `max_grad_norm` set;
+>    `bf16 + β=2.0 + reference-free`. This is a *different* failure from #1 and #2.
+>
+> **Do not cite this document as the root-cause authority.** Treat everything below as the
+> v1 hypothesis, not a settled finding. No clean SimPO run has been reproduced yet.
+
+---
+
 **Run config (collapsed):** β=2.0, γ=1.0, lr=**5e-6**, **3 epochs**, lora_r=128
 **Checkpoints:** `checkpoints/simpo-3ep-dpo17/checkpoint-{3732, 7464, 11196}`
 **Training script:** `scripts/train_simpo.py` (commit `f4c8449`)
