@@ -215,19 +215,91 @@ class NaNGuardCPOTrainer(CPOTrainer):
                 text = tok.decode(row[row != tok.pad_token_id], skip_special_tokens=False)
                 print(f"  [row {i}] {text[:500]!r}")
 
+    def _capture_failure(self, model, inputs, reason):
+        """Freeze the exact failure so it can be REPLAYED in seconds, forever.
+
+        Writes to <output_dir>/nan_capture/:
+          - nan_batch.pt   : the exact offending micro-batch (-> single-forward replay)
+          - nan_weights/   : adapter weights AT failure = weights that produced the nan
+                             (training_step runs before the optimizer.step, so these are
+                              the pre-update weights of the failing forward)
+          - nan_autopsy.json : per-layer abs-max / #inf / #nan via forward hooks ->
+                             pinpoints the FIRST layer that emits a non-finite value,
+                             plus logits stats and whether eval-mode reproduces it.
+        This is MEASUREMENT, not a fix: it tells us where the non-finite originates.
+        """
+        import os, json
+        self._dump_batch(inputs, reason)
+        out_dir = os.path.join(self.args.output_dir, "nan_capture")
+        os.makedirs(out_dir, exist_ok=True)
+
+        # (1) exact batch -> instant replay
+        torch.save({k: (v.detach().cpu() if torch.is_tensor(v) else v)
+                    for k, v in inputs.items()}, os.path.join(out_dir, "nan_batch.pt"))
+        # (2) weights @ failure
+        model.save_pretrained(os.path.join(out_dir, "nan_weights"))
+
+        # (3) autopsy: eval-mode forward with per-layer hooks (no dropout -> deterministic)
+        records, handles = [], []
+        def mk_hook(nm):
+            def h(_m, _i, o):
+                t = o[0] if isinstance(o, (tuple, list)) else o
+                if torch.is_tensor(t):
+                    records.append((nm, float(t.float().abs().max()),
+                                    int(torch.isinf(t).sum()), int(torch.isnan(t).sum())))
+            return h
+        for nm, mod in model.named_modules():
+            if mod.__class__.__name__.endswith("DecoderLayer"):
+                handles.append(mod.register_forward_hook(mk_hook(nm)))
+
+        was_training = model.training
+        model.eval()
+        report = {"reason": reason, "global_step": int(self.state.global_step)}
+        try:
+            with torch.no_grad():
+                out = self.concatenated_forward(model, inputs)
+            ch_lp, rej_lp, ch_lg, rej_lg = out[0], out[1], out[2], out[3]
+            report["eval_mode_reproduces_nonfinite"] = not bool(
+                torch.isfinite(ch_lp).all() and torch.isfinite(rej_lp).all())
+            report["logits"] = {
+                "chosen_absmax": float(ch_lg.float().abs().max()),
+                "chosen_inf": int(torch.isinf(ch_lg).sum()),
+                "chosen_nan": int(torch.isnan(ch_lg).sum()),
+                "rejected_absmax": float(rej_lg.float().abs().max()),
+                "rejected_inf": int(torch.isinf(rej_lg).sum()),
+                "rejected_nan": int(torch.isnan(rej_lg).sum()),
+                "chosen_logps": ch_lp.float().tolist(),
+                "rejected_logps": rej_lp.float().tolist(),
+            }
+        finally:
+            for h in handles:
+                h.remove()
+            if was_training:
+                model.train()
+
+        first_bad = next(((nm, inf, nan) for nm, mx, inf, nan in records if inf or nan), None)
+        report["first_nonfinite_layer"] = first_bad
+        report["layer_absmax_tail"] = records[-10:]
+        with open(os.path.join(out_dir, "nan_autopsy.json"), "w") as f:
+            json.dump(report, f, indent=2)
+        print(f"\n[NaN-capture] artifacts -> {out_dir}")
+        print(f"[NaN-capture] eval-mode reproduces non-finite: {report.get('eval_mode_reproduces_nonfinite')}")
+        print(f"[NaN-capture] FIRST non-finite layer: {first_bad}")
+        print(f"[NaN-capture] logits: {report.get('logits')}")
+
     def training_step(self, model, inputs, num_items_in_batch=None):
         loss = super().training_step(model, inputs, num_items_in_batch=num_items_in_batch)
 
         if not torch.isfinite(loss).all():
-            self._dump_batch(inputs, reason=f"non-finite loss = {loss.item()}")
-            raise FloatingPointError("Non-finite SimPO loss; offending batch dumped above.")
+            self._capture_failure(model, inputs, reason=f"non-finite loss = {loss.item()}")
+            raise FloatingPointError("Non-finite SimPO loss; failure captured for replay.")
 
         bad = [n for n, p in model.named_parameters()
                if p.requires_grad and p.grad is not None and not torch.isfinite(p.grad).all()]
         if bad:
-            self._dump_batch(inputs, reason=f"finite loss={loss.item():.4f} but non-finite grad "
-                                            f"in {len(bad)} params (first: {bad[0]})")
-            raise FloatingPointError("Non-finite gradient on finite loss; offending batch dumped above.")
+            self._capture_failure(model, inputs, reason=f"finite loss={loss.item():.4f} but non-finite grad "
+                                                        f"in {len(bad)} params (first: {bad[0]})")
+            raise FloatingPointError("Non-finite gradient on finite loss; failure captured for replay.")
 
         return loss
 
@@ -251,6 +323,10 @@ def main():
         target_modules=list(cfg.lora_target_modules),
         bias="none",
         task_type="CAUSAL_LM",
+        # rsLoRA (alpha/sqrt(r)) keeps adapter grad magnitude ~Theta(1) at high rank.
+        # Standard alpha/r at r=128 is a documented source of gradient instability
+        # (arXiv:2312.03732) — a prime suspect for the DPO-17 grad-explosion NaN.
+        use_rslora=cfg.get("use_rslora", False),
     )
 
     # cpo_alpha=0.0 disables the CPO term so the loss is pure SimPO.

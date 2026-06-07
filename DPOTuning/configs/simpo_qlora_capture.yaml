@@ -1,0 +1,73 @@
+# DPO-17 NaN CAPTURE run — byte-identical to configs/simpo_qlora.yaml (the run that
+# NaN'd at step 3613) EXCEPT:
+#   (d) eval disabled  -> saves ~2.3h; eval never updates weights, so the deterministic
+#       trajectory is unchanged and it still NaNs at step 3613 (v2/v3/runA all did).
+#   save full checkpoint at step 3600 (with optimizer+rng) -> resume the last 13 steps
+#       in minutes instead of 11h for any future training-dynamics experiment.
+# On the NaN, NaNGuardCPOTrainer._capture_failure dumps nan_batch.pt + nan_weights/ +
+# nan_autopsy.json under output_dir/nan_capture/ for instant single-forward replay.
+# DO NOT change seed/beta/lr/data/batch/grad-accum/epochs/gradient_checkpointing —
+# any of those alters the trajectory and the bug may move off step 3613.
+
+model_name_or_path: checkpoints/sft-zephyr-lora/checkpoint-17205
+torch_dtype: bfloat16
+attn_implementation: flash_attention_2
+
+use_peft: true
+load_in_4bit: false
+lora_r: 128
+lora_alpha: 128
+lora_dropout: 0.05
+use_rslora: false   # MUST match the run that failed (rsLoRA changes the trajectory)
+lora_target_modules:
+- q_proj
+- k_proj
+- v_proj
+- o_proj
+- gate_proj
+- up_proj
+- down_proj
+
+dataset_mixer:
+  argilla/ultrafeedback-binarized-preferences-cleaned: 1.0
+dataset_splits:
+- train[2%:]
+- train[:2%]
+dataset_num_proc: 12
+
+loss_type: simpo
+bf16: true
+beta: 2.0
+simpo_gamma: 1.0
+
+# (d) eval OFF for speed; weights never change during eval so step-3613 failure is unaffected
+do_eval: false
+eval_strategy: "no"
+eval_steps: 100
+
+gradient_accumulation_steps: 4
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+learning_rate: 5.0e-7
+max_grad_norm: 1.0
+log_level: info
+logging_steps: 10
+lr_scheduler_type: cosine
+max_length: 1024
+max_prompt_length: 512
+num_train_epochs: 3   # MUST stay 3 — cosine LR schedule is computed over 3*steps_per_epoch;
+                      # changing it shifts the LR at step 3613 and may move the failure.
+optim: paged_adamw_32bit
+output_dir: checkpoints/simpo-gbr05-capture
+per_device_train_batch_size: 4
+per_device_eval_batch_size: 8
+push_to_hub: false
+report_to: none
+
+# Insurance: ONE full checkpoint (weights+optimizer+rng) at step 3600, 13 steps pre-cliff.
+save_strategy: steps
+save_steps: 3600
+save_total_limit: 1
+seed: 42
+warmup_ratio: 0.1

@@ -20,6 +20,10 @@ load_in_4bit: false  # A100 80GB has headroom for bf16; matches dpo_vanilla_qlor
 lora_r: 128
 lora_alpha: 128
 lora_dropout: 0.05
+use_rslora: false  # REVERTED 2026-06-06: at fixed r=128 this is just an 11x scalar bump
+                   # (alpha/r=1.0 -> alpha/sqrt(r)=11.3), which made grad_norm climb
+                   # 178->282 in warmup. rsLoRA fixes grad SUPPRESSION when VARYING rank;
+                   # our problem is grad EXPLOSION at fixed rank, so it's the wrong lever.
 lora_target_modules:
 - q_proj
 - k_proj
@@ -68,8 +72,12 @@ per_device_train_batch_size: 4
 per_device_eval_batch_size: 8
 push_to_hub: false
 report_to: none
-save_strategy: epoch  # one checkpoint per epoch (~steps 3732/7464/11193); ignores save_steps
-save_steps: 500       # ignored under save_strategy=epoch; kept for reference
-save_total_limit: 3   # 3 epochs → all three epoch checkpoints retained
+save_strategy: steps  # step-based so we capture a PRE-CLIFF checkpoint (NaN hit ~step 3613,
+                      # before any epoch save existed). DPO-17: H_state is uninvestigable
+                      # without weights from just before the grad explosion.
+save_steps: 500       # ~7 checkpoints/epoch (500..3500); step 3500 ~= 113 steps before the
+                      # ~3613 cliff. "Last few endpoints" = 2500/3000/3500 for benchmarking.
+save_total_limit: 10  # keep the FULL epoch-1 curve (7 ckpts) so we can benchmark across it
+                      # and pick the quality PEAK (rewards may collapse before the NaN).
 seed: 42
 warmup_ratio: 0.1

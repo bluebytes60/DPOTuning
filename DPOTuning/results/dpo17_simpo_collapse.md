@@ -1,5 +1,12 @@
 # DPO-17 (v1): SimPO Catastrophic Mode Collapse — Failure Analysis
 
+> ## ✅ RESOLVED (2026-06-07) — see [`dpo17_simpo_nan_rootcause.md`](dpo17_simpo_nan_rootcause.md)
+>
+> The root cause was finally **measured** (capture + replay of the exact failing step):
+> a poison Oriya-translation row whose completions truncate to **0 tokens** → SimPO's
+> length-normalized reward computes **0/0 = NaN**. It is bad data, not lr/rsLoRA/overflow/
+> drift. **Trust the root-cause doc; the cause discussion in *this* file is superseded.**
+
 > ## ⚠️ CORRECTION (2026-06-06) — the "lr=5e-6 was the primary cause" conclusion below is NOT established
 >
 > The analysis in this document confidently attributes the collapse to `lr=5e-6` (10× the
