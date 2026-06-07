@@ -41,6 +41,8 @@ def parse_args():
     parser.add_argument("--output_dir", type=str, default=None)
     parser.add_argument("--save_steps", type=int, default=None)
     parser.add_argument("--eval_steps", type=int, default=None)
+    parser.add_argument("--validate-filter", action="store_true",
+                        help="build trainer, run the empty-completion filter, report, and exit (no training)")
     return parser.parse_args()
 
 
@@ -304,6 +306,35 @@ class NaNGuardCPOTrainer(CPOTrainer):
         return loss
 
 
+def drop_empty_completion_rows(trainer):
+    """EXACT empty-completion guard — the real fix for the DPO-17 step-3613 NaN.
+
+    CPOTrainer pre-tokenizes its datasets in __init__, exposing chosen_labels /
+    rejected_labels (scored tokens = labels != -100). SimPO uses average_log_prob, so a
+    row with 0 scored tokens on either side gives 0/0 = NaN. The approximate
+    _completion_survives_truncation pre-filter MODELS TRL's truncation and has gaps (it
+    missed an Oriya row whose huge rejected response drove the truncation budget to 0,
+    emptying BOTH completions). This filters on the GROUND-TRUTH tokenized labels instead,
+    so it cannot have a modeling gap. See results/dpo17_simpo_nan_rootcause.md.
+    """
+    def _has_scored_tokens(ex):
+        return (any(t != -100 for t in ex["chosen_labels"]) and
+                any(t != -100 for t in ex["rejected_labels"]))
+
+    for attr in ("train_dataset", "eval_dataset"):
+        ds = getattr(trainer, attr, None)
+        if ds is None:
+            continue
+        n0 = len(ds)
+        kept = ds.filter(_has_scored_tokens, num_proc=4)
+        setattr(trainer, attr, kept)
+        n_drop = n0 - len(kept)
+        print(f"[NaN-guard EXACT] {attr}: dropped {n_drop} zero-scored-token row(s) -> {len(kept)} kept")
+        # hard invariant: no 0/0 row can survive into training
+        bad = kept.filter(lambda ex: not _has_scored_tokens(ex), num_proc=4)
+        assert len(bad) == 0, f"{attr}: {len(bad)} zero-token rows still present after filter!"
+
+
 def main():
     args = parse_args()
     cfg = load_config(args.config, args)
@@ -370,6 +401,15 @@ def main():
         processing_class=tokenizer,
         peft_config=lora_config,
     )
+
+    # The real fix for the DPO-17 step-3613 NaN: drop any row the trainer tokenized to
+    # 0 scored tokens (SimPO 0/0). Ground-truth filter, no truncation modeling.
+    drop_empty_completion_rows(trainer)
+
+    if getattr(args, "validate_filter", False):
+        print("[validate-filter] filter ran and the no-zero-token invariant held; exiting before training.")
+        return
+
     trainer.train()
     trainer.save_model()
 

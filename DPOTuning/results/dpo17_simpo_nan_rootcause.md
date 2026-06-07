@@ -86,6 +86,24 @@ filter is the guarantee. Provable instantly: after filtering, 0 zero-token rows 
    bug did, destroying our cheap resume path and forcing a full re-run). Prefer
    `save_only_model` or a correct keep-latest rule.
 
+## Prior art — this is a known class of bug (we are not alone)
+- **verl-project/verl #785** "[SFT] On Backpropagation of Nan Loss and Data Truncation":
+  *"data truncation ... resulted in the entire batch lacking positions with loss mask.
+  Consequently, a division by zero occurred during calculating the average, causing the
+  loss to become NaN."* Their recommended fixes: **"removing data with long prompts or
+  directly preventing division by zero"** — exactly our approach (drop 0-token rows; a
+  guarded division is the alternative). Same mechanism (truncation → 0 loss tokens →
+  mean = 0/0 → NaN), different framework. https://github.com/verl-project/verl/issues/785
+- **SimPO length-normalization issues** (#4, #20, #32) confirm averaging by completion
+  length is core to SimPO — which is precisely what makes a 0-token completion fatal
+  (DPO sums, so it is immune). https://github.com/princeton-nlp/SimPO/issues/20
+- **TRL `tokenize_row`** truncates prompt+completion to `max_length`; with SimPO's mean
+  reward, any row that truncates a completion to empty becomes 0/0. (TRL DPO/CPO docs.)
+
+Takeaway: "truncation empties the loss target → divide-by-length → NaN" is a recurring
+trap in preference/SFT trainers. The robust, framework-agnostic guard is to **drop rows
+with zero scored tokens after the real tokenization** (and/or guard the division).
+
 ## Artifacts
 - Capture instrumentation: `scripts/train_simpo.py` (`NaNGuardCPOTrainer._capture_failure`)
 - Capture config: `configs/simpo_qlora_capture.yaml`
