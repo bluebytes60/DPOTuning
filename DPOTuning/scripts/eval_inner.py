@@ -31,6 +31,9 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", required=True, help="Path to checkpoint dir or HF model ID")
     parser.add_argument("--base_model", default="mistralai/Mistral-7B-v0.1")
+    parser.add_argument("--sft_adapter", default=None,
+                        help="SFT adapter merged before the checkpoint. REQUIRED for SimPO "
+                             "checkpoints (trained on base+SFT); omitting it silently degrades output.")
     parser.add_argument("--tag", default=None, help="Human-readable run tag for runs.csv")
     parser.add_argument("--all_checkpoints", action="store_true", help="Iterate all checkpoints under --checkpoint")
     parser.add_argument("--max_new_tokens", type=int, default=512)
@@ -71,7 +74,7 @@ def run_diagnostic(model, tokenizer, prompts, max_new_tokens):
 
 def eval_checkpoint(checkpoint_path, args, prompts):
     print(f"\n=== Evaluating: {checkpoint_path} ===")
-    model, tokenizer = load_model(args.base_model, checkpoint_path)
+    model, tokenizer = load_model(args.base_model, checkpoint_path, sft_adapter_path=args.sft_adapter)
     stats = run_diagnostic(model, tokenizer, prompts, args.max_new_tokens)
 
     print(f"avg_gen_length       : {stats['avg_gen_length']:.1f} tokens")
