@@ -48,7 +48,7 @@ beta: 2.0            # SimPO paper default
 simpo_gamma: 1.0     # gamma/beta = 0.5 (paper default gbr)
 do_eval: true
 eval_strategy: steps
-eval_steps: 100
+eval_steps: 250      # quality curve at ~half the eval overhead of 100 (3-epoch run)
 gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
@@ -63,21 +63,18 @@ logging_steps: 10
 lr_scheduler_type: cosine
 max_length: 1024
 max_prompt_length: 512
-num_train_epochs: 3   # SimPO paper says 1 epoch is sufficient. NOTE: the latest run still
-                       # NaN'd at epoch ~0.97 (gradient explosion) regardless of epoch count,
-                       # so the epoch setting is not what's keeping us from a clean run.
+num_train_epochs: 3   # LoRA under-fits in 1 pass; 3 epochs. The step-3613 NaN was H_data
+                       # (0/0 from a truncated Oriya row), now fixed by drop_empty_completion_rows
+                       # — so the full 3-epoch run can finally complete. Pick best epoch by eval.
 optim: paged_adamw_32bit
-output_dir: checkpoints/simpo-gbr05
+output_dir: checkpoints/simpo-gbr05-fixed
 per_device_train_batch_size: 4
 per_device_eval_batch_size: 8
 push_to_hub: false
 report_to: none
-save_strategy: steps  # step-based so we capture a PRE-CLIFF checkpoint (NaN hit ~step 3613,
-                      # before any epoch save existed). DPO-17: H_state is uninvestigable
-                      # without weights from just before the grad explosion.
-save_steps: 500       # ~7 checkpoints/epoch (500..3500); step 3500 ~= 113 steps before the
-                      # ~3613 cliff. "Last few endpoints" = 2500/3000/3500 for benchmarking.
-save_total_limit: 10  # keep the FULL epoch-1 curve (7 ckpts) so we can benchmark across it
-                      # and pick the quality PEAK (rewards may collapse before the NaN).
+save_strategy: epoch  # one resumable checkpoint per epoch (3 total) -> compare epochs &
+                      # pick the best by eval; resume if a 24h run dies late.
+save_steps: 500       # ignored under save_strategy=epoch
+save_total_limit: 3   # keep all 3 epoch checkpoints
 seed: 42
 warmup_ratio: 0.1
