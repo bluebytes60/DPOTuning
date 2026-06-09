@@ -21,11 +21,34 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import torch
-from datasets import load_dataset
 
-from scripts.generation import load_model, generate
+from scripts.generation import load_model, _stop_token_ids, _strip_role_markers
 
 OUT_DIR = Path("results/alpaca_eval")
+AE_PROMPTS = "data/alpaca_eval_prompts.json"
+
+
+@torch.inference_mode()
+def gen_batch(model, tok, instructions, max_new_tokens, batch_size):
+    """Batched greedy generation (left-padded) — same outputs as single, much faster."""
+    tok.padding_side = "left"
+    if tok.pad_token is None:
+        tok.pad_token = tok.eos_token
+    stop_ids = _stop_token_ids(tok)
+    outs = []
+    for i in range(0, len(instructions), batch_size):
+        chunk = instructions[i:i + batch_size]
+        prompts = [tok.apply_chat_template([{"role": "user", "content": x}],
+                                           tokenize=False, add_generation_prompt=True) for x in chunk]
+        enc = tok(prompts, return_tensors="pt", padding=True).to(model.device)
+        gen = model.generate(**enc, max_new_tokens=max_new_tokens, do_sample=False,
+                             eos_token_id=stop_ids, pad_token_id=tok.eos_token_id)
+        plen = enc["input_ids"].shape[1]
+        for j in range(len(chunk)):
+            txt = tok.decode(gen[j][plen:], skip_special_tokens=True)
+            outs.append(_strip_role_markers(txt))
+        print(f"  [{min(i+batch_size, len(instructions))}/{len(instructions)}]", flush=True)
+    return outs
 
 
 def main():
@@ -35,6 +58,8 @@ def main():
     ap.add_argument("--base_model", default="mistralai/Mistral-7B-v0.1")
     ap.add_argument("--model_name", required=True, help="generator label, e.g. zephyr-simpo-ep1")
     ap.add_argument("--max_new_tokens", type=int, default=1024)
+    ap.add_argument("--batch_size", type=int, default=16)
+    ap.add_argument("--limit", type=int, default=0, help="generate only first N (smoke test)")
     args = ap.parse_args()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -45,22 +70,24 @@ def main():
             print(f"[skip] {out_path} already has {n} outputs")
             return
 
-    print(f"[data] loading tatsu-lab/alpaca_eval (805 prompts)", flush=True)
-    ds = load_dataset("tatsu-lab/alpaca_eval", "alpaca_eval", trust_remote_code=True)["eval"]
+    # datasets 5.x dropped loading-script support for tatsu-lab/alpaca_eval, so we read
+    # the identical 805-prompt eval set extracted from the prior AE output files.
+    print(f"[data] loading AE2 prompts from {AE_PROMPTS}", flush=True)
+    ds = json.loads(Path(AE_PROMPTS).read_text())
+    if not args.limit:
+        assert len(ds) == 805, f"expected 805 prompts, got {len(ds)}"
+    if args.limit:
+        ds = ds[: args.limit]
     print(f"[data] {len(ds)} prompts", flush=True)
 
     print(f"[load] {args.checkpoint} (sft_adapter={args.sft_adapter})", flush=True)
     model, tok = load_model(args.base_model, args.checkpoint, sft_adapter_path=args.sft_adapter)
 
-    results = []
-    for i, ex in enumerate(ds):
-        out = generate(model, tok, [{"role": "user", "content": ex["instruction"]}],
-                       max_new_tokens=args.max_new_tokens)
-        results.append({"instruction": ex["instruction"], "output": out,
-                        "generator": args.model_name, "dataset": ex.get("dataset", "alpaca_eval")})
-        if (i + 1) % 25 == 0:
-            print(f"  [{i+1}/{len(ds)}]", flush=True)
-            out_path.write_text(json.dumps(results, ensure_ascii=False, indent=2))  # checkpoint progress
+    instructions = [ex["instruction"] for ex in ds]
+    outputs = gen_batch(model, tok, instructions, args.max_new_tokens, args.batch_size)
+    results = [{"instruction": ex["instruction"], "output": o,
+                "generator": args.model_name, "dataset": ex.get("dataset", "alpaca_eval")}
+               for ex, o in zip(ds, outputs)]
     out_path.write_text(json.dumps(results, ensure_ascii=False, indent=2))
     print(f"[done] wrote {len(results)} outputs -> {out_path}", flush=True)
 

@@ -27,3 +27,6 @@ dpo15_dpo6_ep3_recheck,d:\git\DPOTuning\checkpoints\dpo\checkpoint-11196,dpo6_ep
 simpo-gbr05-fixed/checkpoint-3723,checkpoints/simpo-gbr05-fixed/checkpoint-3723,simpo3ep_inner,simpo,,,,,,1024,438.56,844.0,0.4,0.0,,,,
 simpo-gbr05-fixed/checkpoint-7446,checkpoints/simpo-gbr05-fixed/checkpoint-7446,simpo3ep_inner,simpo,,,,,,1024,457.42,841.0000000000001,0.4,0.0,,,,
 simpo-gbr05-fixed/checkpoint-11169,checkpoints/simpo-gbr05-fixed/checkpoint-11169,simpo3ep_inner,simpo,,,,,,1024,430.02,811.0,0.6,0.0,,,,
+dpo17_simpo_ep1,checkpoints/simpo-gbr05-fixed/checkpoint-3723,simpo,simpo,2.0,3,5e-7,128,1.0,1024,,,,,,7.33,31.58,MT-Bench optionB (our-client gen + fschat gpt-4 judge); 160/160 | AE2: LC=31.58 raw=30.9 avglen=1941ch (weighted_alpaca_eval_gpt4_turbo_new)
+dpo17_simpo_ep2,checkpoints/simpo-gbr05-fixed/checkpoint-7446,simpo,simpo,2.0,3,5e-7,128,1.0,1024,,,,,,6.86,24.71,MT-Bench optionB (our-client gen + fschat gpt-4 judge); 159/160 | AE2: LC=24.71 raw=23.24 avglen=1771ch (weighted_alpaca_eval_gpt4_turbo_new)
+dpo17_simpo_ep3,checkpoints/simpo-gbr05-fixed/checkpoint-11169,simpo,simpo,2.0,3,5e-7,128,1.0,1024,,,,,,6.37,20.03,MT-Bench optionB (our-client gen + fschat gpt-4 judge); 160/160 | AE2: LC=20.03 raw=18.64 avglen=1717ch (weighted_alpaca_eval_gpt4_turbo_new)
