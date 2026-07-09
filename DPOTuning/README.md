@@ -111,4 +111,7 @@ incorrect GPT-4 preference labels.
 
 ## Hardware
 
-RTX 4090 24GB (DPO training + inference eval) / A100 80GB (SFT training)
+**Training:** all stages (SFT, DPO, SimPO) on a single **A100 80GB** rented on Runpod — one GPU
+replacing Zephyr's multi-GPU full fine-tune. **Inference / evaluation:** consumer **RTX 4090 24GB**
+(the adapters are ~200–500MB; the merged 7B runs comfortably in 24GB). The artifact is deployable
+on consumer hardware even though it was trained on a datacenter card.
