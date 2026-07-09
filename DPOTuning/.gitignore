@@ -1,6 +1,0 @@
-CLAUDE.md
-checkpoints/
-__pycache__/
-*.pyc
-.env
-.ae_venv/
