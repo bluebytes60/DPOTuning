@@ -1,7 +1,8 @@
 # Reproducing Zephyr-7B-β on a Single GPU — and Beating the Recipe with SimPO
 
-*Aligning Mistral-7B with QLoRA on consumer hardware: an honest cost-quality accounting, and a
-loss-function swap that matched full fine-tuning from a 24 GB card.*
+*Aligning Mistral-7B with parameter-efficient fine-tuning on a single GPU: an honest cost-quality
+accounting, and a loss-function swap that matched multi-GPU full fine-tuning — trained on one
+rented A100, with adapters small enough to run inference on a 24 GB consumer card.*
 
 ---
 
@@ -9,7 +10,7 @@ loss-function swap that matched full fine-tuning from a 24 GB card.*
 
 I reproduced the [Zephyr-7B-β](https://huggingface.co/HuggingFaceH4/zephyr-7b-beta) alignment
 recipe — **Mistral-7B base → SFT on UltraChat → preference tuning on UltraFeedback** — using
-**QLoRA** so the whole pipeline fits on a single GPU. Then I swapped DPO for **SimPO**
+**parameter-efficient LoRA** so the whole pipeline trains on a single GPU. Then I swapped DPO for **SimPO**
 (reference-free, length-normalized preference optimization) and it came out ahead:
 
 ![Money figure: MT-Bench and AlpacaEval 2 LC across all five models](figures/fig1_money.png)
@@ -51,10 +52,10 @@ The catch: Zephyr was trained with **full fine-tuning** on multi-GPU hardware. T
 project answers is practical and, I think, the honest one for anyone doing alignment outside a
 big lab:
 
-> **How close can you get to a published full-fine-tune result using QLoRA on a single consumer
-> GPU — and what, exactly, does the shortcut cost you?**
+> **How close can you get to a published multi-GPU full-fine-tune result using parameter-efficient
+> LoRA on a single GPU — and what, exactly, does the shortcut cost you?**
 
-"About 80% of the quality at ~50× less compute" is only a satisfying answer if you can *decompose*
+"About 80% of the quality at a fraction of the compute" is only a satisfying answer if you can *decompose*
 the gap. That decomposition — and the discovery that a better loss function closes it — is the
 substance of this write-up.
 
@@ -118,10 +119,15 @@ UltraFeedback** (prompt, chosen, rejected) triplets; only the loss differs (with
 > inadvertently kept r=16 (an under-ranked deviation from the recipe); SimPO used r=128. This
 > confounds the DPO↔SimPO comparison and likely understates DPO — see §6 Limitations.
 
-**Hardware:** SFT on an **A100 80 GB** (one epoch over ~207K conversations); all preference
-training and every inference-time evaluation on a single **RTX 4090 24 GB**. Mistral-7B in 4-bit is
-~5 GB; DPO/SimPO training peaks at ~12–16 GB — comfortably within a consumer card. SimPO being
-reference-free saves the second (frozen) model copy in memory versus DPO.
+**Hardware.** *Training* — all three stages (SFT, DPO, SimPO) ran on a single **A100 80 GB rented
+by the hour on Runpod**. That headroom is why the preference stages load the base model in bf16
+rather than 4-bit (`load_in_4bit: false` in the DPO/SimPO configs); only SFT uses 4-bit NF4. The
+point of parameter-efficient tuning here isn't fitting on the cheapest card — it's replacing
+Zephyr's *multi-GPU* full fine-tune with **one** GPU and a small adapter. *Inference/evaluation* —
+every benchmark generation and diagnostic ran on a consumer **RTX 4090 24 GB**: the trained
+adapters are ~200–500 MB and the merged 7B runs comfortably in 24 GB, so the artifact you ship is
+deployable on consumer hardware even though it was trained on a datacenter card. SimPO being
+reference-free also drops the second (frozen) model copy from memory versus DPO.
 
 ### 3.3 Data
 
@@ -211,14 +217,15 @@ generation quality — a clean, measured over-optimization gap between the proxy
 thing you actually care about. SimPO's paper recommends ~1 epoch; that held here even though a
 rank-128 LoRA under-fits in a single pass. **Pick epoch 1.**
 
-### 4.4 The QLoRA-vs-full-FT gap, accounted for
+### 4.4 The LoRA-vs-full-FT gap, accounted for
 
 - **DPO** lands ~0.5 MT-Bench points and ~2.4 pp AE2 LC below full-FT Zephyr. That's the honest
-  QLoRA cost on the *matched-recipe* configuration: real, bounded, and mostly explained by the
-  length-bias decomposition above.
+  single-GPU-LoRA cost on the *matched-recipe* configuration: real, bounded, and mostly explained
+  by the length-bias decomposition above.
 - **SimPO** erases the MT-Bench gap (7.33 vs 7.34) and inverts the AlpacaEval gap. The headline
-  isn't "QLoRA is free" — it's that **the loss function mattered more than the full-FT-vs-QLoRA
-  distinction** on this task. Swapping DPO→SimPO bought more than swapping QLoRA→full-FT would have.
+  isn't "the shortcut is free" — it's that **the loss function mattered more than the
+  full-FT-vs-LoRA distinction** on this task. Swapping DPO→SimPO bought more than swapping
+  single-GPU LoRA back to multi-GPU full fine-tuning would have.
 
 ---
 
@@ -265,7 +272,8 @@ better than it is and the SimPO comparison would be muddied by length. LC is the
 
 ## 7. Conclusion
 
-On a single 24 GB GPU, a QLoRA reproduction of the Zephyr recipe reaches ~80% of the published
+Trained on a single (rented) A100 and deployable for inference on a 24 GB consumer card, a
+parameter-efficient LoRA reproduction of the Zephyr recipe reaches ~80% of the published multi-GPU
 full-fine-tune quality — and **switching the preference loss from DPO to SimPO closes that gap on
 MT-Bench and more than reverses it on length-controlled AlpacaEval**, without the verbosity DPO
 picks up. The two most transferable lessons are methodological: **decompose apparent gains against a
