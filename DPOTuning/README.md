@@ -8,9 +8,27 @@ Goal: quantify the QLoRA-vs-full-FT cost-quality tradeoff explicitly.
 
 | Stage | Model | Data | Loss | Status |
 |---|---|---|---|---|
-| 1 — Baseline | Mistral-7B-v0.1 base | — | — | Done |
-| 2 — SFT | LoRA adapter A | UltraChat 200K | Cross-entropy | **Done** (1 epoch, A100) |
-| 3 — DPO | LoRA adapter B (init from A) | UltraFeedback Binarized Cleaned | DPO | Not started |
+| 1 — Baseline | Mistral-7B-v0.1 base | — | — | **Done** (MT-Bench 3.17) |
+| 2 — SFT | LoRA adapter A | UltraChat 200K | Cross-entropy | **Done** (1 epoch, A100; MT-Bench 6.29) |
+| 3 — DPO | LoRA adapter B (init from A) | UltraFeedback Binarized Cleaned | DPO | **Done** (β=0.1, 3 epochs; best MT-Bench 6.82, AE2 LC 10.82%) |
+| 4 — SimPO | LoRA adapter B′ (init from A) | UltraFeedback Binarized Cleaned | SimPO | **Done** (β=2.0 γ=1.0; best MT-Bench 7.33, AE2 LC 31.58%) |
+
+## Results
+
+Full money table: [`results/final_table.md`](results/final_table.md). Best checkpoint per method:
+
+| Model | MT-Bench | AE2 LC | Avg gen len (chars) |
+|---|---|---|---|
+| Mistral-7B-v0.1 (base) | 3.17 | — | — |
+| SFT (UltraChat, QLoRA) | 6.29 | 5.83% | 893 |
+| DPO (UltraFeedback, QLoRA, best = ep3) | 6.82 | 10.82% | 2,678 |
+| **SimPO (UltraFeedback, QLoRA, best = ep1)** | **7.33** | **31.58%** | 1,941 |
+| Zephyr-7B-β (published, full-FT) | **7.34** | 13.20% | — |
+
+- **DPO** lands at ~80% of Zephyr's published AE2 LC at ~50× less compute — the honest QLoRA-vs-full-FT gap.
+- **SimPO ep1** matches Zephyr on MT-Bench (7.33 vs 7.34) and exceeds its AE2 LC 2.4×, *without*
+  DPO's length inflation (LC ≈ raw at ~700 fewer chars) — length-normalized loss correcting the
+  verbosity bias DPO introduces. See [`results/dpo17_simpo_eval_review.md`](results/dpo17_simpo_eval_review.md).
 
 ## SFT Results (qualitative)
 

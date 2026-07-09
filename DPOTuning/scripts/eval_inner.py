@@ -31,9 +31,20 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--checkpoint", required=True, help="Path to checkpoint dir or HF model ID")
     parser.add_argument("--base_model", default="mistralai/Mistral-7B-v0.1")
+    parser.add_argument("--sft_adapter", default=None,
+                        help="SFT adapter merged before the checkpoint. REQUIRED for SimPO "
+                             "checkpoints (trained on base+SFT); omitting it silently degrades output.")
     parser.add_argument("--tag", default=None, help="Human-readable run tag for runs.csv")
     parser.add_argument("--all_checkpoints", action="store_true", help="Iterate all checkpoints under --checkpoint")
     parser.add_argument("--max_new_tokens", type=int, default=512)
+    parser.add_argument("--run_id", default=None, help="Explicit run ID (overrides default ckpt-name derivation)")
+    parser.add_argument("--stage", default="", choices=["", "base", "sft", "dpo", "simpo"])
+    parser.add_argument("--beta", default="")
+    parser.add_argument("--epochs", default="")
+    parser.add_argument("--lr", default="")
+    parser.add_argument("--lora_r", default="")
+    parser.add_argument("--simpo_gamma", default="")
+    parser.add_argument("--notes", default="")
     return parser.parse_args()
 
 
@@ -63,7 +74,7 @@ def run_diagnostic(model, tokenizer, prompts, max_new_tokens):
 
 def eval_checkpoint(checkpoint_path, args, prompts):
     print(f"\n=== Evaluating: {checkpoint_path} ===")
-    model, tokenizer = load_model(args.base_model, checkpoint_path)
+    model, tokenizer = load_model(args.base_model, checkpoint_path, sft_adapter_path=args.sft_adapter)
     stats = run_diagnostic(model, tokenizer, prompts, args.max_new_tokens)
 
     print(f"avg_gen_length       : {stats['avg_gen_length']:.1f} tokens")
@@ -76,23 +87,40 @@ def eval_checkpoint(checkpoint_path, args, prompts):
     return stats
 
 
+CSV_FIELDNAMES = [
+    "run_id", "checkpoint", "tag", "stage",
+    "beta", "epochs", "lr", "lora_r", "simpo_gamma",
+    "max_new_tokens",
+    "avg_gen_length", "p90_gen_length",
+    "harmful_refusal_rate", "over_refusal_rate", "pref_acc",
+    "mt_bench", "alpacaeval2_lc", "notes",
+]
+
+
 def append_to_csv(row):
-    fieldnames = [
-        "run_id", "checkpoint", "tag", "avg_gen_length", "p90_gen_length",
-        "harmful_refusal_rate", "over_refusal_rate",
-        "pref_acc", "mt_bench", "alpacaeval2_lc", "notes",
-    ]
-    exists = RESULTS_CSV.exists()
+    """Append one row to runs.csv with column alignment matching the canonical 18-column schema.
+
+    Defensive: if the file is missing a trailing newline, csv.writer would glue the new row onto
+    the last existing row. Add the newline first. (Same guard as eval_outer.py / notebook helpers.)
+    """
+    write_header = not RESULTS_CSV.exists() or RESULTS_CSV.stat().st_size == 0
+    if RESULTS_CSV.exists() and RESULTS_CSV.stat().st_size > 0:
+        with open(RESULTS_CSV, "rb") as f:
+            f.seek(-1, 2)
+            last_byte = f.read(1)
+        if last_byte not in (b"\n", b"\r"):
+            with open(RESULTS_CSV, "ab") as f:
+                f.write(b"\n")
     with open(RESULTS_CSV, "a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
-        if not exists:
+        writer = csv.DictWriter(f, fieldnames=CSV_FIELDNAMES, extrasaction="ignore")
+        if write_header:
             writer.writeheader()
         writer.writerow(row)
 
 
 def main():
     args = parse_args()
-    prompts = json.loads(PROMPTS_PATH.read_text())
+    prompts = json.loads(PROMPTS_PATH.read_text(encoding="utf-8"))
 
     checkpoints = []
     if args.all_checkpoints:
@@ -103,16 +131,22 @@ def main():
 
     for ckpt in checkpoints:
         stats = eval_checkpoint(str(ckpt), args, prompts)
-        run_id = f"{ckpt.parent.name}/{ckpt.name}" if ckpt.name.startswith("checkpoint-") else ckpt.name
+        run_id = args.run_id or (
+            f"{ckpt.parent.name}/{ckpt.name}" if ckpt.name.startswith("checkpoint-") else ckpt.name
+        )
         append_to_csv({
             "run_id": run_id,
             "checkpoint": str(ckpt),
             "tag": args.tag or "",
+            "stage": args.stage or "",
+            "beta": args.beta,
+            "epochs": args.epochs,
+            "lr": args.lr,
+            "lora_r": args.lora_r,
+            "simpo_gamma": args.simpo_gamma,
+            "max_new_tokens": args.max_new_tokens,
             **stats,
-            "pref_acc": "",
-            "mt_bench": "",
-            "alpacaeval2_lc": "",
-            "notes": "",
+            "notes": args.notes or "",
         })
         print(f"Written to {RESULTS_CSV}")
 

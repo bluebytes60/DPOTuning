@@ -1,0 +1,144 @@
+/home/DPOTuning/DPOTuning/scripts/diag_nan_ckpt.py:24: TRLExperimentalWarning: You are importing from 'trl.experimental'. APIs here are unstable and may change or be removed without notice. Silence this warning by setting environment variable TRL_EXPERIMENTAL_SILENCE=1.
+  from trl.experimental.cpo import CPOTrainer, CPOConfig
+Loading weights:   0%|          | 0/291 [00:00<?, ?it/s]Loading weights:   2%|▏         | 5/291 [00:00<00:05, 48.67it/s]Loading weights:   6%|▌         | 18/291 [00:00<00:02, 94.40it/s]Loading weights:  11%|█         | 31/291 [00:00<00:02, 108.82it/s]Loading weights:  14%|█▍        | 42/291 [00:00<00:02, 102.42it/s]Loading weights:  20%|█▉        | 58/291 [00:00<00:01, 117.86it/s]Loading weights:  24%|██▍       | 70/291 [00:00<00:01, 112.18it/s]Loading weights:  24%|██▍       | 70/291 [00:20<00:01, 112.18it/s]Loading weights:  25%|██▌       | 73/291 [00:43<05:27,  1.50s/it] Loading weights:  26%|██▌       | 76/291 [00:44<04:44,  1.32s/it]Loading weights:  29%|██▉       | 84/291 [00:44<03:06,  1.11it/s]Loading weights:  31%|███▏      | 91/291 [00:45<02:12,  1.51it/s]Loading weights:  33%|███▎      | 96/291 [00:45<01:44,  1.87it/s]Loading weights:  34%|███▍      | 100/291 [00:45<01:22,  2.31it/s]Loading weights:  36%|███▌      | 104/291 [00:46<01:05,  2.84it/s]Loading weights:  37%|███▋      | 107/291 [00:46<01:01,  2.99it/s]Loading weights:  38%|███▊      | 112/291 [00:47<00:44,  4.04it/s]Loading weights:  39%|███▉      | 114/291 [00:47<00:40,  4.36it/s]Loading weights:  41%|████      | 118/291 [00:47<00:28,  5.97it/s]Loading weights:  42%|████▏     | 121/291 [00:47<00:24,  6.98it/s]Loading weights:  42%|████▏     | 123/291 [00:48<00:25,  6.66it/s]Loading weights:  45%|████▍     | 130/291 [00:48<00:15, 10.60it/s]Loading weights:  45%|████▌     | 132/291 [00:48<00:16,  9.89it/s]Loading weights:  47%|████▋     | 136/291 [00:48<00:12, 12.74it/s]Loading weights:  48%|████▊     | 139/291 [00:49<00:12, 12.56it/s]Loading weights:  48%|████▊     | 141/291 [00:49<00:14, 10.01it/s]Loading weights:  51%|█████     | 148/291 [00:49<00:10, 14.05it/s]Loading weights:  52%|█████▏    | 150/291 [00:50<00:16,  8.48it/s]Loading weights:  53%|█████▎    | 154/291 [00:50<00:12, 11.24it/s]Loading weights:  54%|█████▍    | 157/291 [00:50<00:11, 11.71it/s]Loading weights:  55%|█████▍    | 159/291 [00:51<00:18,  7.06it/s]Loading weights:  57%|█████▋    | 166/291 [00:51<00:11, 10.77it/s]Loading weights:  58%|█████▊    | 168/291 [00:52<00:12,  9.51it/s]Loading weights:  59%|█████▉    | 172/291 [00:52<00:09, 12.60it/s]Loading weights:  60%|██████    | 175/291 [00:52<00:09, 12.55it/s]Loading weights:  61%|██████    | 177/291 [00:52<00:10, 10.60it/s]Loading weights:  63%|██████▎   | 184/291 [00:53<00:07, 13.70it/s]Loading weights:  64%|██████▍   | 186/291 [00:53<00:08, 12.07it/s]Loading weights:  66%|██████▋   | 193/291 [00:53<00:06, 15.53it/s]Loading weights:  67%|██████▋   | 195/291 [00:53<00:07, 13.32it/s]Loading weights:  68%|██████▊   | 199/291 [00:54<00:06, 15.09it/s]Loading weights:  68%|██████▊   | 199/291 [01:10<00:06, 15.09it/s]Loading weights:  69%|██████▉   | 202/291 [01:49<06:54,  4.66s/it]Loading weights:  70%|██████▉   | 203/291 [01:49<06:08,  4.19s/it]Loading weights:  71%|███████▏  | 208/291 [01:49<03:18,  2.39s/it]Loading weights:  73%|███████▎  | 211/291 [01:50<02:21,  1.77s/it]Loading weights:  73%|███████▎  | 213/291 [01:50<01:52,  1.44s/it]Loading weights:  74%|███████▍  | 216/291 [01:50<01:16,  1.01s/it]Loading weights:  76%|███████▌  | 220/291 [01:50<00:47,  1.50it/s]Loading weights:  76%|███████▋  | 222/291 [01:51<00:39,  1.75it/s]Loading weights:  78%|███████▊  | 226/291 [01:51<00:24,  2.69it/s]Loading weights:  79%|███████▊  | 229/291 [01:51<00:18,  3.42it/s]Loading weights:  79%|███████▉  | 231/291 [01:52<00:15,  3.83it/s]Loading weights:  81%|████████  | 235/291 [01:52<00:09,  5.75it/s]Loading weights:  82%|████████▏ | 238/291 [01:52<00:07,  7.08it/s]Loading weights:  82%|████████▏ | 240/291 [01:52<00:07,  6.48it/s]Loading weights:  85%|████████▍ | 247/291 [01:53<00:04, 10.77it/s]Loading weights:  86%|████████▌ | 249/291 [01:53<00:04,  9.88it/s]Loading weights:  87%|████████▋ | 253/291 [01:53<00:02, 12.98it/s]Loading weights:  88%|████████▊ | 256/291 [01:53<00:02, 13.54it/s]Loading weights:  89%|████████▊ | 258/291 [01:53<00:02, 11.33it/s]Loading weights:  90%|█████████ | 262/291 [01:54<00:01, 15.07it/s]Loading weights:  91%|█████████ | 265/291 [01:54<00:01, 14.66it/s]Loading weights:  92%|█████████▏| 267/291 [01:54<00:02, 11.97it/s]Loading weights:  93%|█████████▎| 270/291 [01:54<00:01, 13.88it/s]Loading weights:  93%|█████████▎| 272/291 [01:54<00:01, 10.96it/s]Loading weights:  94%|█████████▍| 274/291 [01:55<00:01, 10.72it/s]Loading weights:  95%|█████████▍| 276/291 [01:57<00:06,  2.49it/s]Loading weights:  97%|█████████▋| 283/291 [01:58<00:01,  5.08it/s]Loading weights:  98%|█████████▊| 285/291 [01:58<00:01,  5.35it/s]Loading weights:  99%|█████████▉| 289/291 [01:58<00:00,  7.43it/s]Loading weights: 100%|██████████| 291/291 [01:58<00:00,  2.46it/s]
+
+[load] applying trained adapter: checkpoints/simpo-gbr05/checkpoint-3500
+Using the latest cached version of the dataset since argilla/ultrafeedback-binarized-preferences-cleaned couldn't be found on the Hugging Face Hub (offline mode is enabled).
+Found the latest cached dataset configuration 'default' at /workspace/.cache/huggingface/datasets/argilla___ultrafeedback-binarized-preferences-cleaned/default/0.0.0/770076f077c4c5e298498fa32f804857f46d5134 (last modified on Sat Jun  6 18:47:53 2026).
+[find] 'extract the title from a JSON formatted '    -> 1 match(es)
+[find] "What's the length of the air?"               -> 1 match(es)
+[find] '123 : 36 : : 221'                            -> 1 match(es)
+[find] 'Translate it from the English language t'    -> 19 match(es)
+[RANK 0] When using DPODataCollatorWithPadding, you should set `remove_unused_columns=False` in your TrainingArguments we have set it for you, but you should do it yourself in the future.
+Map:   0%|          | 0/4 [00:00<?, ? examples/s]Map: 100%|██████████| 4/4 [00:00<00:00, 1016.19 examples/s]
+Map:   0%|          | 0/4 [00:00<?, ? examples/s]Map: 100%|██████████| 4/4 [00:00<00:00, 1097.20 examples/s]
+Map:   0%|          | 0/4 [00:00<?, ? examples/s]Map: 100%|██████████| 4/4 [00:00<00:00, 1408.08 examples/s]
+Map:   0%|          | 0/4 [00:00<?, ? examples/s]Map: 100%|██████████| 4/4 [00:00<00:00, 1109.38 examples/s]
+Map:   0%|          | 0/4 [00:00<?, ? examples/s]Map: 100%|██████████| 4/4 [00:00<00:00, 238.78 examples/s]
+Map:   0%|          | 0/4 [00:00<?, ? examples/s]Map: 100%|██████████| 4/4 [00:00<00:00, 250.84 examples/s]
+
+===== PASS: bf16 (as trained) (model dtype = torch.bfloat16) =====
+ # prompt                                       logp_ch    logp_rej        loss  finite?
+ 0 extract the title from a JSON formatte       -1.1094     -1.1094      1.3125  True   (n_ch=184, n_rej=391)
+ 1 What's the length of the air?                -3.1094     -5.2812      0.0347  True   (n_ch=142, n_rej=44)
+ 2 123 : 36 : : 221                             -1.0312     -3.0938      0.0430  True   (n_ch=364, n_rej=100)
+ 3 Translate it from the English language       -1.0703     -2.5156      0.1406  True   (n_ch=340, n_rej=215)
+
+===== PASS: fp32 (upcast) (model dtype = torch.float32) =====
+ # prompt                                       logp_ch    logp_rej        loss  finite?
+[transformers] Casting fp32 inputs back to torch.float32 for flash-attn compatibility.
+Traceback (most recent call last):
+  File "/home/DPOTuning/DPOTuning/scripts/diag_nan_ckpt.py", line 124, in <module>
+    main()
+  File "/home/DPOTuning/DPOTuning/scripts/diag_nan_ckpt.py", line 100, in main
+    fp32_rows = run_pass(trainer, model, "fp32 (upcast)")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/DPOTuning/DPOTuning/scripts/diag_nan_ckpt.py", line 51, in run_pass
+    ch_logps, rej_logps = trainer.concatenated_forward(model, batch)[:2]
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/trl/experimental/cpo/cpo_trainer.py", line 772, in concatenated_forward
+    outputs = model(
+              ^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/peft/peft_model.py", line 1993, in forward
+    return self.base_model(
+           ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/peft/tuners/tuners_utils.py", line 330, in forward
+    return self.model.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/transformers/utils/generic.py", line 903, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/transformers/models/mistral/modeling_mistral.py", line 447, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+                                       ^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/transformers/utils/generic.py", line 1032, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/transformers/utils/output_capturing.py", line 252, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/transformers/models/mistral/modeling_mistral.py", line 385, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/transformers/modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/transformers/models/mistral/modeling_mistral.py", line 224, in forward
+    hidden_states, _ = self.self_attn(
+                       ^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1773, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/nn/modules/module.py", line 1784, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/transformers/models/mistral/modeling_mistral.py", line 164, in forward
+    attn_output, attn_weights = attention_interface(
+                                ^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/transformers/integrations/flash_attention.py", line 70, in flash_attention_forward
+    attn_output = _flash_attention_forward(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/transformers/modeling_flash_attention_utils.py", line 766, in _flash_attention_forward
+    out_unpad = flash_varlen_fn(
+                ^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/flash_attn/flash_attn_interface.py", line 1443, in flash_attn_varlen_func
+    return FlashAttnVarlenFunc.apply(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/autograd/function.py", line 576, in apply
+    return super().apply(*args, **kwargs)  # type: ignore[misc]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/flash_attn/flash_attn_interface.py", line 925, in forward
+    out_padded, softmax_lse, S_dmask, rng_state = _wrapped_flash_attn_varlen_forward(
+                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/_ops.py", line 1243, in __call__
+    return self._op(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/_library/autograd.py", line 111, in autograd_impl
+    result = forward_no_grad(*args, Metadata(keyset, keyword_only_args))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/_library/autograd.py", line 40, in forward_no_grad
+    result = op.redispatch(keyset & _C._after_autograd_keyset, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/_ops.py", line 836, in redispatch
+    return self._handle.redispatch_boxed(keyset, *args, **kwargs)  # type: ignore[return-value]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/_library/custom_ops.py", line 344, in backend_impl
+    result = self._backend_fns[device_type](*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/_compile.py", line 53, in inner
+    return disable_fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/_dynamo/eval_frame.py", line 929, in _fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/_library/custom_ops.py", line 377, in wrapped_fn
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/flash_attn/flash_attn_interface.py", line 165, in _flash_attn_varlen_forward
+    out, softmax_lse, S_dmask, rng_state = flash_attn_gpu.varlen_fwd(
+                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: FlashAttention only support fp16 and bf16 data type

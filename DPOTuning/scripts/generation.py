@@ -14,13 +14,25 @@ from peft import PeftModel
 _ROLE_MARKERS = ["<|assistant|>", "<|user|>", "<|system|>"]
 
 
-def load_model(base_model_id: str, checkpoint_path: str):
+def load_model(base_model_id: str, checkpoint_path: str, sft_adapter_path: str | None = None):
+    """Load a checkpoint adapter on top of the base model.
+
+    sft_adapter_path: if given, the SFT adapter is applied to the base and
+    merged BEFORE attaching `checkpoint_path`. Required for SimPO checkpoints
+    from the fixed train_simpo.py: those merge SFT into the frozen backbone and
+    train a fresh SimPO LoRA on top, so the saved adapter is a delta on
+    `base+SFT`, not on bare base. Loading it without the merge silently drops
+    SFT and produces degraded output. DPO/SFT checkpoints leave this None.
+    """
     tokenizer = AutoTokenizer.from_pretrained(checkpoint_path)
     model = AutoModelForCausalLM.from_pretrained(
         base_model_id,
         torch_dtype=torch.bfloat16,
         device_map="auto",
     )
+    if sft_adapter_path is not None:
+        model = PeftModel.from_pretrained(model, sft_adapter_path)
+        model = model.merge_and_unload()
     model = PeftModel.from_pretrained(model, checkpoint_path)
     model.eval()
     return model, tokenizer
