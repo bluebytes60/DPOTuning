@@ -1,11 +1,17 @@
-# Model checkpoints
-DPOTuning/sft-zephyr-lora/
+# Local narrative / secrets
+CLAUDE.md
+.env
+.claude/settings.local.json
 
-# Nested repos
-alignment-handbook/
+# Model checkpoints / adapters (local only, not committed)
+checkpoints/
+sft-zephyr-lora/
 
-# macOS
+# Python
+__pycache__/
+*.pyc
+.ae_venv/
+
+# macOS / editor
 .DS_Store
-
-# VSCode
 .vscode/
