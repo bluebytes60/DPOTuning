@@ -35,6 +35,10 @@
 **Training config:** `configs/simpo_qlora.yaml` (at commit `3e785bc`)
 **Inner-loop eval notebook:** `notebooks/dpo17_inner_loop_eval.ipynb`
 **Raw response dump:** `results/simpo_responses_debug.txt`
+**Training log:** `logs/simpo-3ep-dpo17.log` — the training-side evidence for this collapse. The
+run completed all 3 epochs with **no NaN** and reward-accuracy holding ~0.83 the whole time, yet
+produced token soup; `eval_loss` is the only in-trainer signal that rises (in epoch 3). Parsed for
+the writeup's Appendix A figure (`writeup/figures/fig4_collapse.png` via `writeup/make_figures.py`).
 
 ---
 
